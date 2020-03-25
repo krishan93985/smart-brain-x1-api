@@ -22,7 +22,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/',(req,res) => {
-    res.send(database.users);
+    res.send('its working!');
     })
 
 app.post('/register',(req,res) => register.handleRegister(req,res,db,bcrypt));
@@ -37,7 +37,7 @@ app.post('/imageurl',(req,res) =>image.handleApiCall(req,res));
 
 app.put('/image',(req,res) =>image.handleImage(req,res,db));
 
-app.listen(3000,()=> console.log(`App is running at post 3000`));
+app.listen(process.env.PORT || 3000,()=> console.log(`App is running at post ${process.env.PORT}`));
 
 
 
