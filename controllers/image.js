@@ -16,7 +16,7 @@ const handleImage = (req,res,db) =>  {
 
 const handleApiCall = (req,res) => {
     const app = new Clarifai.App({
-        apiKey: '50cca828210c42009007bd03e487da16'
+        apiKey: process.env.API_CLARIFAI
        })
     app.models.predict(Clarifai.FACE_DETECT_MODEL, req.body.input)
     .then(response => {
