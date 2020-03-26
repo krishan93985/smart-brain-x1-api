@@ -1,6 +1,6 @@
 # smart-brain-x1-api
 
-clone this repo
+clone this repo \n
 run npm install
 run npm start
 
