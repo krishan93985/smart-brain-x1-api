@@ -2,7 +2,6 @@ const handleSignin=(req,res,db,bcrypt) =>  {
     const {email,password} = req.body;
     if(!email || !password)
     return res.json('Unable to sign in!')
-    
     db.select('email','hash').from('login')
     .where('email','=',email)
     .then(response => {
@@ -25,3 +24,6 @@ const handleSignin=(req,res,db,bcrypt) =>  {
 module.exports = {
     handleSignin:handleSignin
 }
+
+
+ 

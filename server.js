@@ -6,15 +6,15 @@ const register = require('./controllers/register');
 const signin = require('./controllers/signin');
 const image = require('./controllers/image');
 const profile = require('./controllers/profile');
-app = express();
 
+app = express();
 const db = knex({
-    client: 'pg',
-    connection: {
-      connectionString : process.env.DATABASE_URL,
-      ssl:true
-    }
-  });
+  client: 'pg',
+  connection: {
+    connectionString : process.env.DATABASE_URL,
+    ssl:true
+  }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -31,11 +31,15 @@ app.post('/signin',(req,res) => signin.handleSignin(req,res,db,bcrypt));
 
 app.get('/profile/:id',(req,res) => profile.handleProfileGet(req,res,db));
 
+app.put('/profile/update/:id',(req,res) => profile.handleProfileUpdate(req,res,db,bcrypt));
+
 app.post('/imageurl',(req,res) =>image.handleApiCall(req,res));
 
 app.put('/image',(req,res) =>image.handleImage(req,res,db));
 
-app.listen(process.env.PORT || 3000,()=> console.log(`App is running at post ${process.env.PORT}`));
+app.delete('/profile/delete/:id',(req,res) => profile.handleProfileDelete(req,res,db))
+
+app.listen(process.env.PORT || 3000,()=> console.log(`App is running at port ${process.env.PORT}`));
 
 
 
