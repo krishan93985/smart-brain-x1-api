@@ -1,6 +1,8 @@
 // MSSQL Client
 // -------
-const { map, flatten, values } = require('lodash');
+const flatten = require('lodash/flatten');
+const map = require('lodash/map');
+const values = require('lodash/values');
 const inherits = require('inherits');
 
 const Client = require('../../client');
@@ -253,7 +255,7 @@ Object.assign(Client_MSSQL.prototype, {
   // Position the bindings for the query.
   positionBindings(sql) {
     let questionCount = -1;
-    return sql.replace(/\?/g, function() {
+    return sql.replace(/\?/g, function () {
       questionCount += 1;
       return `@p${questionCount}`;
     });

@@ -1,20 +1,14 @@
 // Migrator
 // -------
-const {
-  differenceWith,
-  each,
-  filter,
-  get,
-  isFunction,
-  isBoolean,
-  isEmpty,
-  isUndefined,
-  max,
-} = require('lodash');
+const differenceWith = require('lodash/differenceWith');
+const get = require('lodash/get');
+const isBoolean = require('lodash/isBoolean');
+const isEmpty = require('lodash/isEmpty');
+const isFunction = require('lodash/isFunction');
+const max = require('lodash/max');
 const inherits = require('inherits');
 const {
   getLockTableName,
-  getLockTableNameWithSchema,
   getTable,
   getTableName,
 } = require('./table-resolver');
@@ -49,7 +43,10 @@ class Migrator {
       this.knex.userParams = this.knex.userParams || {};
     }
 
-    this.config = getMergedConfig(this.knex.client.config.migrations);
+    this.config = getMergedConfig(
+      this.knex.client.config.migrations,
+      this.knex.client.logger
+    );
     this.generator = new MigrationGenerator(this.knex.client.config.migrations);
     this._activeMigration = {
       fileName: null,
@@ -57,50 +54,49 @@ class Migrator {
   }
 
   // Migrators to the latest configuration.
-  latest(config) {
+  async latest(config) {
     this._disableProcessing();
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
 
-    return migrationListResolver
-      .listAllAndCompleted(this.config, this.knex)
-      .then((value) => {
-        if (!this.config.disableMigrationsListValidation) {
-          validateMigrationList(this.config.migrationSource, value);
-        }
-        return value;
-      })
-      .then(([all, completed]) => {
-        const migrations = getNewMigrations(
-          this.config.migrationSource,
-          all,
-          completed
+    const allAndCompleted = await migrationListResolver.listAllAndCompleted(
+      this.config,
+      this.knex
+    );
+
+    if (!this.config.disableMigrationsListValidation) {
+      validateMigrationList(this.config.migrationSource, allAndCompleted);
+    }
+
+    const [all, completed] = allAndCompleted;
+
+    const migrations = getNewMigrations(
+      this.config.migrationSource,
+      all,
+      completed
+    );
+
+    const transactionForAll =
+      !this.config.disableTransactions &&
+      !migrations.some((migration) => {
+        const migrationContents = this.config.migrationSource.getMigration(
+          migration
         );
-
-        const transactionForAll =
-          !this.config.disableTransactions &&
-          isEmpty(
-            filter(migrations, (migration) => {
-              const migrationContents = this.config.migrationSource.getMigration(
-                migration
-              );
-              return !this._useTransaction(migrationContents);
-            })
-          );
-
-        if (transactionForAll) {
-          return this.knex.transaction((trx) => {
-            return this._runBatch(migrations, 'up', trx);
-          });
-        } else {
-          return this._runBatch(migrations, 'up');
-        }
+        return !this._useTransaction(migrationContents);
       });
+
+    if (transactionForAll) {
+      return this.knex.transaction((trx) => {
+        return this._runBatch(migrations, 'up', trx);
+      });
+    } else {
+      return this._runBatch(migrations, 'up');
+    }
   }
 
   // Runs the next migration that has not yet been run
   up(config) {
     this._disableProcessing();
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
 
     return migrationListResolver
       .listAllAndCompleted(this.config, this.knex)
@@ -141,15 +137,10 @@ class Migrator {
 
         const transactionForAll =
           !this.config.disableTransactions &&
-          isEmpty(
-            filter(migrationsToRun, (migration) => {
-              const migrationContents = this.config.migrationSource.getMigration(
-                migration
-              );
-
-              return !this._useTransaction(migrationContents);
-            })
-          );
+          (!migrationToRun ||
+            this._useTransaction(
+              this.config.migrationSource.getMigration(migrationToRun)
+            ));
 
         if (transactionForAll) {
           return this.knex.transaction((trx) => {
@@ -166,7 +157,11 @@ class Migrator {
     this._disableProcessing();
     return new Promise((resolve, reject) => {
       try {
-        this.config = getMergedConfig(config, this.config);
+        this.config = getMergedConfig(
+          config,
+          this.config,
+          this.knex.client.logger
+        );
       } catch (e) {
         reject(e);
       }
@@ -198,7 +193,7 @@ class Migrator {
 
   down(config) {
     this._disableProcessing();
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
 
     return migrationListResolver
       .listAllAndCompleted(this.config, this.knex)
@@ -241,7 +236,7 @@ class Migrator {
 
   status(config) {
     this._disableProcessing();
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
 
     return Promise.all([
       getTable(this.knex, this.config.tableName, this.config.schemaName).select(
@@ -255,20 +250,20 @@ class Migrator {
   // If no migrations have been run yet, return "none".
   currentVersion(config) {
     this._disableProcessing();
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
 
     return migrationListResolver
       .listCompleted(this.config.tableName, this.config.schemaName, this.knex)
       .then((completed) => {
         const val = max(completed.map((value) => value.split('_')[0]));
-        return isUndefined(val) ? 'none' : val;
+        return val === undefined ? 'none' : val;
       });
   }
 
   // list all migrations
   async list(config) {
     this._disableProcessing();
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
 
     const [all, completed] = await migrationListResolver.listAllAndCompleted(
       this.config,
@@ -287,18 +282,26 @@ class Migrator {
     return [completed, newMigrations];
   }
 
-  forceFreeMigrationsLock(config) {
-    this.config = getMergedConfig(config, this.config);
-
-    const lockTable = getLockTableName(this.config.tableName);
-    return getSchemaBuilder(this.knex, this.config.schemaName)
-      .hasTable(lockTable)
-      .then((exist) => exist && this._freeLock());
+  async forceFreeMigrationsLock(config) {
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
+    const { schemaName, tableName } = this.config;
+    const lockTableName = getLockTableName(tableName);
+    const { knex } = this;
+    const getLockTable = () => getTable(knex, lockTableName, schemaName);
+    const tableExists = await getSchemaBuilder(knex, schemaName).hasTable(
+      lockTableName
+    );
+    if (tableExists) {
+      await getLockTable().del();
+      await getLockTable().insert({
+        is_locked: 0,
+      });
+    }
   }
 
   // Creates a new migration, with a given name.
   make(name, config) {
-    this.config = getMergedConfig(config, this.config);
+    this.config = getMergedConfig(config, this.config, this.knex.client.logger);
     return this.generator.make(name, this.config);
   }
 
@@ -387,12 +390,7 @@ class Migrator {
             );
             this.knex.client.logger.warn(
               'If you are sure migrations are not running you can release the ' +
-                'lock manually by deleting all the rows = require(migrations lock ' +
-                'table: ' +
-                getLockTableNameWithSchema(
-                  this.config.tableName,
-                  this.config.schemaName
-                )
+                "lock manually by running 'knex migrate:unlock'"
             );
           } else {
             if (this._activeMigration.fileName) {
@@ -439,25 +437,22 @@ class Migrator {
 
   // Get the last batch of migrations, by name, ordered by insert id in reverse
   // order.
-  _getLastBatch([allMigrations]) {
+  async _getLastBatch([allMigrations]) {
     const { tableName, schemaName } = this.config;
-    return getTable(this.knex, tableName, schemaName)
-      .where('batch', function(qb) {
+    const migrationNames = await getTable(this.knex, tableName, schemaName)
+      .where('batch', function (qb) {
         qb.max('batch').from(getTableName(tableName, schemaName));
       })
-      .orderBy('id', 'desc')
-      .then((migrations) =>
-        Promise.all(
-          migrations.map((migration) => {
-            return allMigrations.find((entry) => {
-              return (
-                this.config.migrationSource.getMigrationName(entry) ===
-                migration.name
-              );
-            });
-          })
-        )
-      );
+      .orderBy('id', 'desc');
+
+    const lastBatchMigrations = migrationNames.map((migration) => {
+      return allMigrations.find((entry) => {
+        return (
+          this.config.migrationSource.getMigrationName(entry) === migration.name
+        );
+      });
+    });
+    return Promise.all(lastBatchMigrations);
   }
 
   // Returns the latest batch number.
@@ -487,7 +482,7 @@ class Migrator {
     const { tableName, schemaName, disableTransactions } = this.config;
     let current = Promise.resolve();
     const log = [];
-    each(migrations, (migration) => {
+    migrations.forEach((migration) => {
       const name = this.config.migrationSource.getMigrationName(migration);
       this._activeMigration.fileName = name;
       const migrationContent = this.config.migrationSource.getMigration(
@@ -557,8 +552,7 @@ class Migrator {
 
 // Validates that migrations are present in the appropriate directories.
 function validateMigrationList(migrationSource, migrations) {
-  const all = migrations[0];
-  const completed = migrations[1];
+  const [all, completed] = migrations;
   const diff = getMissingMigrations(migrationSource, completed, all);
   if (!isEmpty(diff)) {
     throw new Error(
