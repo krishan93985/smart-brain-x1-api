@@ -2,48 +2,58 @@ const express = require('express');
 const cors = require('cors');
 const knex = require('knex');
 const bcrypt = require('bcrypt-nodejs');
+const morgan = require('morgan');
+
 const register = require('./controllers/register');
 const signin = require('./controllers/signin');
+const signout = require('./controllers/signout')
 const image = require('./controllers/image');
 const profile = require('./controllers/profile');
+const auth = require('./controllers/authorization');
 
 app = express();
+// const db = knex({
+//   client: 'pg',
+//   connection: {
+//     connectionString : process.env.DATABASE_URL,
+//     ssl: {
+//     rejectUnauthorized: false
+//   }
+//   }
+// });
+
 const db = knex({
   client: 'pg',
-  connection: {
-    connectionString : process.env.DATABASE_URL,
-    ssl: {
-    rejectUnauthorized: false
-  }
-  }
-});
+  connection: process.env.POSTGRES_URI
+})
 
 app.use(cors());
+app.use(morgan('combined'));
 app.use(express.json());
 
 app.get('/',(req,res) => {
     res.send('its working!');
     })
 
-app.post('/register',(req,res) => register.handleRegister(req,res,db,bcrypt));
+app.post('/register',(req,res) => register.generateAuthToken(req,res,db,bcrypt));
 //OR app.post('/register',register.handleRegister(db,bcrypt)); currying
-// if called as const handleRegister = (db,bcrypt) => (req,res) => {..}
+// if called as const generateAuthToken = (db,bcrypt) => (req,res) => {..}
 
-app.post('/signin',(req,res) => signin.handleSignin(req,res,db,bcrypt));
+app.post('/signin',(req,res) => signin.signinAuthentication(req,res,db,bcrypt));
 
-app.get('/profile/:id',(req,res) => profile.handleProfileGet(req,res,db));
+app.get('/profile/:id', auth.requireAuth, (req,res) => profile.handleProfileGet(req,res,db));
 
-app.put('/profile/update/:id',(req,res) => profile.handleProfileUpdate(req,res,db,bcrypt));
+app.put('/profile/:id', auth.requireAuth, (req,res) => profile.handleProfileUpdate(req,res,db));
 
-app.post('/imageurl',(req,res) =>image.handleApiCall(req,res));
+app.post('/imageurl', auth.requireAuth, (req,res) =>image.handleApiCall(req,res));
 
-app.put('/image',(req,res) =>image.handleImage(req,res,db));
+app.put('/image', auth.requireAuth, (req,res) =>image.handleImage(req,res,db));
 
-app.delete('/profile/delete/:id',(req,res) => profile.handleProfileDelete(req,res,db))
+app.delete('/signout/:id', auth.requireAuth, (req,res) => signout.handleSignout(req,res));
 
-app.listen(process.env.PORT || 3000,()=> console.log(`App is running at port ${process.env.PORT}`));
+app.delete('/profile/delete/:id', auth.requireAuth, (req,res) => profile.handleProfileDelete(req,res,db))
 
-
+app.listen(process.env.PORT || 3000,()=> console.log(`App is running at port ${process.env.PORT||3000}`));
 
 
 

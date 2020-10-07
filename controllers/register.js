@@ -1,14 +1,13 @@
-const handleRegister=(req,res,db,bcrypt) => {
+const { createSession } = require('./signin');
+
+const handleRegister=(req,db,bcrypt) => {
     const {name,email,password} = req.body;
     if(!name || !email || !password)
-    return res.json('Unable to register!')
+    return Promise.reject('Unable to register!')
     
     const hash = bcrypt.hashSync(password);
-    db.transaction(trx => {
-        trx.insert({
-            hash:hash,
-            email:email
-        })
+    return db.transaction(trx => {
+        return trx.insert({ hash, email })
         .into('login')
         .returning('email')
         .then(loginEmail => {
@@ -19,13 +18,22 @@ const handleRegister=(req,res,db,bcrypt) => {
              joined:new Date()
           })
         .returning('*')
-        .then(user => res.json(user[0]));
+        .then(user => Promise.resolve(user[0]));
         }).then(trx.commit)
         .catch(trx.rollback);
         })
-        .catch(err => res.status(400).send('Unable to register!'));
+        .catch(err => Promise.reject('Unable to register!'));
+}
+
+const generateAuthToken = (req,res,db,bcrypt) => {
+    handleRegister(req,db,bcrypt)
+    .then(user => {
+        return user.email && user.id ? createSession(user) : Promise.reject('Unable to register!');
+    })
+    .then(data => res.json(data))
+    .catch(err => { console.log(err);  return res.status(400).json(err)})
 }
 
 module.exports = {
-    handleRegister:handleRegister
+    generateAuthToken
 }

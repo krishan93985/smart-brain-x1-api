@@ -10,32 +10,25 @@ const handleProfileGet = (req,res,db) => {
     }).catch(err => res.status(400).json('Unable to get Profile!'))
 }
 
-const handleProfileUpdate = (req,res,db,bcrypt) =>  { //can be put,delete and other requests acc. to the user to make changes in their profile
-    const name=req.body.name,password=req.body.password,email=req.body.email;
-    if(!name || !email || !password)
-    return res.status(400).json('Unable to Update Profile!')
+const handleProfileUpdate = (req,res,db) =>  { //can be put,delete and other requests acc. to the user to make changes in their profile
+    const { name, age, pet } = req.body.formInput;
     const {id} = req.params;
-    const hash = bcrypt.hashSync(password);
-      db.transaction(trx => {  
-            trx('login').where('id','=',id)
-            .update({
-                email:email,
-                hash:hash
-            },'id')
-            .then(userId => {
-             return trx('users').where('id','=',userId[0])
-                .update({
-                    name:name,
-                    email:email
-                })
-                .returning('*')
-                .then(user => {
-                    res.json(user[0]);
-                }).catch(err => res.status(400).json('Unable to Update Profile!'))
-            }).then(trx.commit)
-            .catch(trx.rollback)
-        })
-    }
+
+    if( !name || !id )
+    return res.status(400).json('Unable to Update Profile!')
+
+    db('users')
+     .where({ id })
+     .update({ name, age, pet })
+     .then(response => {
+         console.log(response);
+         if(response){
+             res.json('success');
+         } else{
+             res.status(400).json('Unable to Update Profile!')
+         }
+     }).catch(err => { res.status(400).json('Unable to Update Profile!') })
+}
 
  const handleProfileDelete = (req,res,db) => {
      const { id } = req.params;
