@@ -12,16 +12,19 @@ const profile = require('./controllers/profile');
 const auth = require('./controllers/authorization');
 
 app = express();
+
+//For heroku deployment
 // const db = knex({
 //   client: 'pg',
 //   connection: {
 //     connectionString : process.env.DATABASE_URL,
 //     ssl: {
 //     rejectUnauthorized: false
-//   }
+//     }
 //   }
 // });
 
+//For local development
 const db = knex({
   client: 'pg',
   connection: process.env.POSTGRES_URI
@@ -54,14 +57,5 @@ app.delete('/signout/:id', auth.requireAuth, (req,res) => signout.handleSignout(
 app.delete('/profile/delete/:id', auth.requireAuth, (req,res) => profile.handleProfileDelete(req,res,db))
 
 app.listen(process.env.PORT || 3000,()=> console.log(`App is running at port ${process.env.PORT||3000}`));
-
-
-
-
-//'/' GET :its working
-// '/signin' POST:success/failure
-//'/register' POST:
-// '/profile/:id' GET/PUT/DELETE/POST
-// '/image' PUT
 
 

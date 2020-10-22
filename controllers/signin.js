@@ -30,7 +30,7 @@ const handleSignin=(req,db,bcrypt) =>  {
 
 const signToken = (email) => {
     const jwtPayload = { email };
-    return jwt.sign(jwtPayload, 'PUT_RANDOM_SECRET_HERE', { expiresIn:'2d' });
+    return jwt.sign(jwtPayload, 'JWT_SECRET', { expiresIn:'2d' });
 }
 
 const setToken = (token,id) => {
