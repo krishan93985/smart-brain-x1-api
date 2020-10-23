@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const redis = require("redis");
-const redisClient = redis.createClient(process.env.REDIS_URI);
+// const redis = require("redis");
+// const redisClient = redis.createClient(process.env.REDIS_URI);
 
 const handleSignin=(req,db,bcrypt) =>  {                   
     const {email,password} = req.body;
@@ -28,36 +28,23 @@ const handleSignin=(req,db,bcrypt) =>  {
     })
 }
 
-const signToken = (email) => {
-    const jwtPayload = { email };
-    return jwt.sign(jwtPayload, 'JWT_SECRET', { expiresIn:'2d' });
-}
-
-const setToken = (token,id) => {
-    return new Promise((resolve,reject) => {
-        if(redisClient.set(token,id) && redisClient.expire(token,2*24*60*60))
-            return resolve("token stored")
-        else 
-            return reject("Failed to store")
-    })
+const signToken = (id,email) => {
+    const jwtPayload = { id, email };
+    return jwt.sign(jwtPayload, `${process.env.JWT_SECRET}`, { expiresIn:'2d' });
 }
 
 const createSession = (data) => {
     const { email,id } = data;
-    const token = signToken(email);
-    return setToken(token,id)
-          .then(() => ({ success:true, userId:id, token }))
-          .catch((err) => err);
+    const token = signToken(id,email);
+    return ({ success:true, userId:id, token });
 }
 
 const getAuthTokenId = (req,res) => {
     const { authorization } = req.headers;
     const token = authorization.split(' ')[1];
-    return redisClient.get(token, (err,reply) => {
-        if(err || !reply)
-          return res.status(400).json('Unauthorized') 
-          console.log(reply)
-        return res.json({ success:true, userId:reply, token})
+    return jwt.verify(token, `${process.env.JWT_SECRET}`,(err,jwtPayload) => {
+        if(err) return res.status(401).json('Unauthorized')
+        return res.json({ success:true, userId:jwtPayload.id, token}); 
     })
 }
 
@@ -78,7 +65,6 @@ const signinAuthentication = (req,res,db,bcrypt) => {
 module.exports = {
     handleSignin,
     signinAuthentication,
-    redisClient,
     createSession
 }
 

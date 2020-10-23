@@ -14,21 +14,21 @@ const auth = require('./controllers/authorization');
 app = express();
 
 //For heroku deployment
-// const db = knex({
-//   client: 'pg',
-//   connection: {
-//     connectionString : process.env.DATABASE_URL,
-//     ssl: {
-//     rejectUnauthorized: false
-//     }
-//   }
-// });
-
-//For local development
 const db = knex({
   client: 'pg',
-  connection: process.env.POSTGRES_URI
-})
+  connection: {
+    connectionString : process.env.DATABASE_URL,
+    ssl: {
+    rejectUnauthorized: false
+    }
+  }
+});
+
+//For local development
+// const db = knex({
+//   client: 'pg',
+//   connection: process.env.POSTGRES_URI
+// })
 
 app.use(cors());
 app.use(morgan('combined'));
