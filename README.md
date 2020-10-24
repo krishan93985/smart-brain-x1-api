@@ -1,8 +1,4 @@
-# smart-brain-x1-api
+### CI/CD WORKFLOW
 
-clone this repo\
-run npm install\
-run npm start
-
-you must add your own API key i.e process.env.your_api_key in image.js to connect to Clarifai API\
-you can grab your key here :https://www.clarifai.com/
+**DEVELOPMENT ---> GITHUB ---> CIRCLECI ---> HEROKU**
+![workflow followed](https://coralogix.com/wp-content/uploads/2020/07/1.Overview-of-Architecture-min.png)
