@@ -18,8 +18,9 @@ const handleApiCall = (req,res) => {
     const app = new Clarifai.App({
         apiKey: `${process.env.API_KEY}`
        })
-    app.models.predict('53e1df302c079b3db8a0a36033ed2d15', req.body.input)
+    app.models.predict(Clarifai.FACE_DETECT_MODEL, req.body.input)
     .then(response => {
+        console.log(response)
         return res.json(response);
     }).catch(err => res.status(400).json(err));
 }

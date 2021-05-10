@@ -1,9 +1,13 @@
+//3rd party modules
 const express = require('express');
 const cors = require('cors');
 const knex = require('knex');
 const bcrypt = require('bcrypt-nodejs');
 const morgan = require('morgan');
+const compression = require('compression');
+const helmet = require('helmet');
 
+//local modules
 const register = require('./controllers/register');
 const signin = require('./controllers/signin');
 const signout = require('./controllers/signout')
@@ -11,13 +15,14 @@ const image = require('./controllers/image');
 const profile = require('./controllers/profile');
 const auth = require('./controllers/authorization');
 
+//instantiate express
 app = express();
 
 //For heroku deployment
 const db = knex({
   client: 'pg',
   connection: {
-    connectionString : process.env.DATABASE_URL,
+    connectionString : process.env.POSTGRES_URI,
     ssl: {
     rejectUnauthorized: false
     }
@@ -29,10 +34,22 @@ const db = knex({
 //   client: 'pg',
 //   connection: process.env.POSTGRES_URI
 // })
+var whitelist = ['http://localhost:3001', 'https://smart-brain-x1.herokuapp.com'];
+var corsOptions = {
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1 || !origin) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  }
+}
 
-app.use(cors());
-app.use(morgan('combined'));
-app.use(express.json());
+app.use(cors(corsOptions)); //allow whitelisted origins
+app.use(morgan('combined'));  //logger
+app.use(express.json({limit:'10mb'}));  //set limit for request entity
+app.use(compression()); //gzip
+app.use(helmet());  //set required headers
 
 app.get('/',(req,res) => {
     res.send('its working!');
@@ -51,6 +68,10 @@ app.put('/profile/:id', auth.requireAuth, (req,res) => profile.handleProfileUpda
 app.post('/imageurl', auth.requireAuth, (req,res) =>image.handleApiCall(req,res));
 
 app.put('/image', auth.requireAuth, (req,res) =>image.handleImage(req,res,db));
+
+app.put('/upload_profile_img/:id', auth.requireAuth, (req,res) => profile.handleProfileImgUpload(req,res,db));
+
+app.delete('/delete_profile_img/:id', auth.requireAuth, (req,res) => profile.handleProfileImgDelete(req,res,db));
 
 app.delete('/signout/:id', auth.requireAuth, (req,res) => signout.handleSignout(req,res));
 

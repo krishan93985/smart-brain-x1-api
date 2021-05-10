@@ -7,7 +7,9 @@ CREATE TABLE users (
     pet TEXT,
     email TEXT UNIQUE NOT NULL,
     entries BIGINT DEFAULT 0,
-    joined TIMESTAMP NOT NULL
+    joined TIMESTAMP NOT NULL,
+    fileId VARCHAR(150),
+    profileurl VARCHAR(350)
 );
 
 COMMIT;
