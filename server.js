@@ -34,7 +34,7 @@ const db = knex({
 //   client: 'pg',
 //   connection: process.env.POSTGRES_URI
 // })
-var whitelist = ['http://localhost:3001', 'https://smart-brain-x1.herokuapp.com'];
+var whitelist = ['http://localhost:3001','http://localhost:3000', 'https://smart-brain-x1.herokuapp.com'];
 var corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1 || !origin) {
